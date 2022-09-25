@@ -3,12 +3,24 @@
 # Lab 3: An Overview of Linear Regression 
 #        and Data Generation
 #
-#' Discuss what this function does...
+#' Generate data for multiple regression
 #'
-#' @param n Describe this parameter here...
-#' @param mu Describe this parameter here...
-#' @param Sigma Describe this parameter here...
-#' @return Describe what this returns...
+#' @param n sample size
+#' @param mu mean vector, p x 1 
+#' @param Sigma variance-covariance matrix, p x p 
+#' @return Data for multiple regression model, n x p 
 rmvnorm <- function(n, mu, Sigma) {
-	# Insert your implementation here...
+  
+  p <- length(mu)
+  
+  if (dim(mu) == c(p, 1) && dim(Sigma) == c(p, p)) {
+    
+    Z <- matrix(rnorm(p * n, 0, 1), ncol = p)
+    X <-  matrix(1, n) %*% t(mu) + Z %*% chol(Sigma)
+    return(X)
+    
+  }else{
+    stop("Input dimensions should match!")
+  }
 }
+
