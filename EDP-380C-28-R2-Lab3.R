@@ -86,9 +86,9 @@ ols_reg <- function(y, X){
   
   yhat <- X %*% B 
   e <- y - yhat 
-  s2 <- (t(e) %*% e) / n
+  s2 <- (t(e) %*% e) / (n - p) 
   
-  cov <- (as.integer(s2)) * solve(t(X) %*% X)
+  cov <- (as.numeric(s2)) * solve(t(X) %*% X)
   
   # SE 
   SE <- sqrt(diag(cov))
@@ -102,7 +102,7 @@ ols_reg <- function(y, X){
   
   # SD(e) and R2
   SD_e <- sqrt(s2)
-  R2 <- (t(B) %*% cov(X) %*% B) / ((t(B) %*% cov(X) %*% B) + as.integer(s2))
+  R2 <- (t(B) %*% cov(X) %*% B) / ((t(B) %*% cov(X) %*% B) + as.numeric(s2))
   
   result[, 1] <- c(B, SD_e, R2)
   result[, 2] <- c(SE, NA, NA)
@@ -122,12 +122,12 @@ X <- as.matrix(cbind(1, mtcars[c("wt", "cyl", "gear")]
 ols_reg(y, X)
 
 #         Estimate        SE    t value     Pr(>|t|)
-# b1    42.3863641 3.7774047 11.2210282 7.134111e-12
-# b2    -3.3920819 0.7080399 -4.7908064 4.913555e-05
-# b3    -1.5280010 0.3620872 -4.2199814 2.323616e-04
-# b4    -0.5228629 0.6718684 -0.7782223 4.429649e-01
-# SD(e)  2.4247668        NA         NA           NA
-# R2     0.8581759        NA         NA           NA
+# b0    42.3863641 4.3789952  9.6794726 1.965929e-10
+# b1    -3.3920819 0.8208025 -4.1326409 2.941570e-04
+# b2    -1.5280010 0.4197533 -3.6402363 1.092609e-03
+# b3    -0.5228629 0.7788703 -0.6713094 5.075244e-01
+# SD(e)  2.5921848        NA         NA           NA
+# R2     0.8182681        NA         NA           NA
 
 summary(lm(mpg ~ wt + cyl + gear, data = mtcars))
 
@@ -160,12 +160,12 @@ trans_p <- function(par_list){
   
   p <- length(par_list$mu)
   
-  cor.mat <- matrix(par_list$rho, p, p)
-  diag(cor.mat) <- 1
-  Sigma <- diag(par_list$sd) %*% cor.mat %*% diag(par_list$sd)
+  cor_mat <- matrix(par_list$rho, p, p)
+  diag(cor_mat) <- 1
+  Sigma <- diag(par_list$sd) %*% cor_mat %*% diag(par_list$sd)
   mu <- matrix(par_list$mu, nrow = p)
   
-  return(list(mu = mu, Sigma = Sigma, cor = cor.mat))
+  return(list(mu = mu, Sigma = Sigma, cor = cor_mat))
   
 }
 
@@ -198,31 +198,29 @@ Y <- with(p_Y, ((matrix(1, n) %*% b0) + (X %*% B)) + rnorm(n, 0, (s_exp)))
 ans_3b <- ols_reg(Y, cbind(1, X))
 
 #         Estimate          SE   t value Pr(>|t|)
-# b0    -4.9370600 0.039744587 -124.2197        0
-# b1     0.9891621 0.006651245  148.7183        0
-# b2     0.9997359 0.003313754  301.6929        0
-# SD(e)  2.0361425          NA        NA       NA
-# R2     0.6064754          NA        NA       NA
+# b0    -4.9370600 0.040463429 -122.0129        0
+# b1     0.9891621 0.006771543  146.0763        0
+# b2     0.9997359 0.003373688  296.3332        0
+# SD(e)  2.0361731          NA        NA       NA
+# R2     0.5978875          NA        NA       NA
 
-dif_3b <- list(b1 = ans_3b[2, 1] - p_Y$b[1],
-               b2 = ans_3b[3, 1] - p_Y$b[2],
-               R2 = ans_3b[5, 1] - p_Y$R2,
-               mu = mean(Y) - p_Y$mu,
-               sd = sd(Y) - p_Y$sd)
-# $b1
-# [1] -0.01083786
-# 
-# $b2
-# [1] -0.0002641061
-# 
-# $R2
-# [1] 0.006475361
-# 
-# $mu
-# [1] 0.00164875
-# 
-# $sd
-# [1] -1.789009
+dif_3b <- rbind(b0 = cbind(b0, ans_3b[1, 1], b0 - ans_3b[1, 1]), 
+                b1 = cbind(p_Y$b[1],  ans_3b[2, 1], p_Y$b[1] - ans_3b[2, 1]),
+                b2 = cbind(p_Y$b[2], ans_3b[3, 1], p_Y$b[2] - ans_3b[3, 1]),
+                R2 = cbind(p_Y$R2, ans_3b[5, 1], p_Y$R2 - ans_3b[5, 1]),
+                mu = cbind(p_Y$mu, mean(Y), p_Y$mu - mean(Y)),
+                sd = cbind(p_Y$sd, sd(Y), p_Y$sd - sd(Y)))
+
+colnames(dif_3b) <- c("Pop", "Est", "Dif")
+rownames(dif_3b) <- c("b0", "b1", "b2", "R2", "mu", "sd")
+
+#     Pop        Est           Dif
+# b0 -5.0 -4.9370600 -0.0629399882
+# b1  1.0  0.9891621  0.0108378625
+# b2  1.0  0.9997359  0.0002641061
+# R2  0.6  0.5978875  0.0021125328
+# mu 10.0 10.0016488 -0.0016487505
+# sd  5.0  3.2109914  1.7890086150
 
 
 
@@ -232,18 +230,18 @@ set.seed(123782)
 p_c <- list(r = c(0.3, -0.4), mu = 10, sd = 5)
 
 ## get combined Sigma from combined cor. mat 
-cor.mat <- with(p_c, rbind(c(1, r), cbind(r, p_Xt$cor)))
-Sigma <- diag(c(p_c$sd, p_X$sd)) %*% cor.mat %*% diag(c(p_c$sd, p_X$sd))
+cor_mat <- with(p_c, rbind(c(1, r), cbind(r, p_Xt$cor)))
+Sigma <- diag(c(p_c$sd, p_X$sd)) %*% cor_mat %*% diag(c(p_c$sd, p_X$sd))
 
 ## reg coef 
-B_c <- solve(p_Xt$Sigma) %*% Sigma[2:3, 1]
+B_c <- solve(p_Xt$Sigma) %*% Sigma[-1, 1]
 
 ## var explained 
-v_exp_c <- with(p_c, sd^2 - t(B_c) %*% Sigma[2:3, 1])
+v_exp_c <- with(p_c, sd^2 - t(B_c) %*% Sigma[-1, 1])
 s_exp_c <- sqrt(v_exp_c)
 
 ## R2 
-R2 <- cor.mat[1, 2:3] %*% solve(p_Xt$cor) %*% cor.mat[2:3, 1]
+R2 <- cor_mat[1, -1] %*% solve(p_Xt$cor) %*% cor_mat[-1, 1]
 
 ## intercept 
 b0_c <- with(p_c, mu - (t(p_Xt$mu) %*% B_c))
@@ -254,28 +252,27 @@ Y_c <- with(p_c, (matrix(1, n) %*% b0_c) + X %*% B_c + rnorm(n, 0, s_exp_c))
 ans_3c <- ols_reg(Y_c, cbind(1, X))
 
 #         Estimate          SE   t value Pr(>|t|)
-# b0    11.7786196 0.079489174  148.1789        0
-# b1     2.3182149 0.013302490  174.2692        0
-# b2    -1.3368715 0.006627508 -201.7156        0
-# SD(e)  4.0162657          NA        NA       NA
-# R2     0.3542879          NA        NA       NA
+# b0    11.7786196 0.079813607  147.5766        0
+# b1     2.3182149 0.013356784  173.5609        0
+# b2    -1.3368715 0.006654558 -200.8956        0
+# SD(e)  4.0163259          NA        NA       NA
+# R2     0.3524265          NA        NA       NA
 
-dif_3c <- list(r1 = cor(Y_c, X[,1]) - p_c$r[1],
-               r2 = cor(Y_c, X[,2]) - p_c$r[2], 
-               mu = mean(Y_c) - p_c$mu,
-               sd = sd(Y) - p_c$sd)
+dif_3c <- rbind(r1 = cbind(p_c$r[1], cor(Y_c, X[, 1]), p_c$r[1] - cor(Y_c, X[, 1])),
+                r2 = cbind(p_c$r[2], cor(Y_c, X[, 2]), p_c$r[2] - cor(Y_c, X[, 2])),
+                mu = cbind(p_c$mu, mean(Y_c), p_c$mu - mean(Y_c)),
+                sd = cbind(p_c$sd, sd(Y_c), p_c$sd - sd(Y_c)))
 
-# $r1
-# [1,] 0.001778966
-# 
-# $r2
-# [1,] 0.003319256
-# 
-# $mu
-# [1] 0.000225353
-# 
-# $sd
-# [1] -1.789009
+colnames(dif_3c) <- c("Pop", "Est", "Dif")
+rownames(dif_3c) <- c("r1", "r2", "mu", "sd")
+
+
+#     Pop        Est          Dif
+# r1  0.3  0.2951460  0.004853952
+# r2 -0.4 -0.3988313 -0.001168671
+# mu 10.0 10.0270952 -0.027095160
+# sd  5.0  4.9954457  0.004554319
+
 
 
 # 3.d
@@ -316,46 +313,39 @@ p_y <- list(b = rep(1, 5), mu = 25, R2 = 0.5)
 data_m1 <- gen_m1(100000, p_x, p_y)
 
 ans_3d1 <- ols_reg(data_m1[,1], cbind(1, data_m1[,2:6]))
+
 #         Estimate          SE    t value Pr(>|t|)
-# b0    25.0219373 0.015166158 1649.85338        0
-# b1     0.9812441 0.015593790   62.92531        0
-# b2     1.0199428 0.011040332   92.38334        0
-# b3     0.9881404 0.009026352  109.47284        0
-# b4     0.9852023 0.007813859  126.08396        0
-# b5     1.0050628 0.007029346  142.98097        0
-# SD(e)  4.8183372          NA         NA       NA
-# R2     0.5009573          NA         NA       NA
+# b0    25.0219373 0.015237786 1642.09794        0
+# b1     0.9812441 0.015667438   62.62952        0
+# b2     1.0199428 0.011092474   91.94908        0
+# b3     0.9881404 0.009068983  108.95824        0
+# b4     0.9852023 0.007850763  125.49128        0
+# b5     1.0050628 0.007062545  142.30886        0
+# SD(e)  4.8184817          NA         NA       NA
+# R2     0.4986015          NA         NA       NA
 
-dif_3d1 <- list(b1 = ans_3d1[2, 1] - p_y$b[1],
-                b2 = ans_3d1[3, 1] - p_y$b[2],
-                b3 = ans_3d1[4, 1] - p_y$b[3],
-                b4 = ans_3d1[5, 1] - p_y$b[4],
-                b5 = ans_3d1[6, 1] - p_y$b[5],
-                R2 = ans_3d1[8, 1] - p_y$R2,
-                mu = mean(data_m1[,1]) - p_y$mu
+dif_3d1 <- rbind(
+  b1 = cbind(p_y$b[1], ans_3d1[2, 1], p_y$b[1] - ans_3d1[2, 1]),
+  b2 = cbind(p_y$b[2], ans_3d1[3, 1], p_y$b[2] - ans_3d1[3, 1]),
+  b3 = cbind(p_y$b[3], ans_3d1[4, 1], p_y$b[3] - ans_3d1[4, 1]),
+  b4 = cbind(p_y$b[4], ans_3d1[5, 1], p_y$b[4] - ans_3d1[5, 1]),
+  b5 = cbind(p_y$b[5], ans_3d1[6, 1], p_y$b[5] - ans_3d1[6, 1]),
+  R2 = cbind(p_y$R2, ans_3d1[8, 1], p_y$R2 - ans_3d1[8, 1]),
+  mu = cbind(p_y$mu, mean(data_m1[,1]), p_y$mu - mean(data_m1[,1]))
 )
-# 
-# $b1
-# [1] -0.01875586
-# 
-# $b2
-# [1] 0.01994276
-# 
-# $b3
-# [1] -0.0118596
-# 
-# $b4
-# [1] -0.01479772
-# 
-# $b5
-# [1] 0.005062766
-# 
-# $R2
-# [1] 0.0009573376
-# 
-# $mu
-# [1] 0.03349281
 
+
+colnames(dif_3d1) <- c("Pop", "Est", "Dif")
+rownames(dif_3d1) <- c("b1", "b2", "b3", "b4", "b5", "R2", "mu")
+
+#     Pop        Est          Dif
+# b1  1.0  0.9812441  0.018755865
+# b2  1.0  1.0199428 -0.019942757
+# b3  1.0  0.9881404  0.011859598
+# b4  1.0  0.9852023  0.014797719
+# b5  1.0  1.0050628 -0.005062766
+# R2  0.5  0.4986015  0.001398544
+# mu 25.0 25.0334928 -0.033492815
 
 
 ## Method 2 
@@ -366,19 +356,20 @@ gen_m2 <- function(n, p_x, p_y){
   p_xt <- trans_p(p_x)
   X <- with(p_xt, rmvnorm(n, mu, Sigma))
   
-  ## get combined Sigma from combined cor. mat 
+  ## get combined Sigma from combined cor_mat 
+  
   R <- with(p_y, rbind(c(1, rho), cbind(rho, p_xt$cor)))
   Sigma <- diag(c(p_y$sd, p_x$sd)) %*% R %*% diag(c(p_y$sd, p_x$sd))
   
   ## reg coef 
-  B <- solve(p_xt$Sigma) %*% Sigma[2:(p + 1), 1]
+  B <- solve(p_xt$Sigma) %*% Sigma[-1, 1]
   
   ## var explained 
-  v_exp <- with(p_y, sd^2 - t(B) %*% Sigma[2:(p + 1), 1])
+  v_exp <- with(p_y, sd^2 - t(B) %*% Sigma[-1, 1])
   s_exp <- sqrt(v_exp)
   
   ## R2 
-  R2 <- R[1, 2:(p + 1)] %*% solve(p_xt$cor) %*% R[2:(p + 1), 1]
+  R2 <- R[1, -1] %*% solve(p_xt$cor) %*% R[-1, 1]
   
   ## intercept 
   b0 <- with(p_y, mu - (t(p_xt$mu) %*% B))
@@ -406,42 +397,33 @@ data_m2 <- gen_m2(10000, p_x, p_y)
 ans_3d2 <- ols_reg(data_m2[,1], cbind(1, data_m2[,2:6]))
 
 #         Estimate         SE   t value      Pr(>|t|)
-# b0     9.9958695 0.02645955 377.77921  0.000000e+00
-# b1    -0.7106237 0.02723187 -26.09529 2.815207e-145
-# b2    -1.6813177 0.01939977 -86.66691  0.000000e+00
-# b3     0.3964946 0.01579660  25.09999 7.062746e-135
-# b4     0.7044516 0.01358040  51.87266  0.000000e+00
-# b5     0.4194456 0.01212141  34.60370 6.397081e-248
-# SD(e)  2.8022547         NA        NA            NA
-# R2     0.5318758         NA        NA            NA
+# b0     9.9958695 0.02803312 356.57357  0.000000e+00
+# b1    -0.7106237 0.02885137 -24.63050 4.277579e-130
+# b2    -1.6813177 0.02055348 -81.80209  0.000000e+00
+# b3     0.3964946 0.01673604  23.69107 9.126511e-121
+# b4     0.7044516 0.01438804  48.96093  0.000000e+00
+# b5     0.4194456 0.01284228  32.66131 2.057206e-222
+# SD(e)  2.8030957         NA        NA            NA
+# R2     0.5030344         NA        NA            NA
 
-
-dif_3d2 <- list(r1 = cor(data_m2[,1], data_m2[, 2]) - p_y$rho[1],
-                r2 = cor(data_m2[,1], data_m2[, 3]) - p_y$rho[2],
-                r3 = cor(data_m2[,1], data_m2[, 4]) - p_y$rho[3],
-                r4 = cor(data_m2[,1], data_m2[, 5]) - p_y$rho[4],
-                r5 = cor(data_m2[,1], data_m2[, 6]) - p_y$rho[5],
-                mu = mean(data_m2[,1]) - p_y$mu,
-                sd = sd(data_m2[,1]) - p_y$sd
+dif_3d2 <- rbind(r1 = cbind(p_y$rho[1], cor(data_m2[, 1], data_m2[, 2]), p_y$rho[1] - cor(data_m2[,1], data_m2[, 2])),
+                 r2 = cbind(p_y$rho[2], cor(data_m2[, 1], data_m2[, 3]), p_y$rho[2] - cor(data_m2[,1], data_m2[, 3])),
+                 r3 = cbind(p_y$rho[3], cor(data_m2[, 1], data_m2[, 4]), p_y$rho[3] - cor(data_m2[,1], data_m2[, 4])),
+                 r4 = cbind(p_y$rho[4], cor(data_m2[, 1], data_m2[, 5]), p_y$rho[4] - cor(data_m2[,1], data_m2[, 5])),
+                 r5 = cbind(p_y$rho[5], cor(data_m2[, 1], data_m2[, 6]), p_y$rho[5] - cor(data_m2[,1], data_m2[, 5])),
+                 mu = cbind(p_y$mu, mean(data_m2[, 1]), p_y$mu - mean(data_m2[, 1])),
+                 sd = cbind(p_y$sd, sd(data_m2[, 1]), p_y$sd - sd(data_m2[, 1]))
 )
 
-# $r1
-# [1] -0.009500006
-# 
-# $r2
-# [1] -0.004060765
-# 
-# $r3
-# [1] 0.002822168
-# 
-# $r4
-# [1] -0.0114716
-# 
-# $r5
-# [1] -0.005992614
-# 
-# $mu
-# [1] -0.02163837
-# 
-# $sd
-# [1] -0.02423421
+
+colnames(dif_3d2) <- c("Pop", "Est", "Dif")
+rownames(dif_3d2) <- c("r1", "r2", "r3", "r4", "r5", "mu", "sd")
+
+#     Pop        Est          Dif
+# r1 -0.15 -0.1595000  0.009500006
+# r2 -0.50 -0.5040608  0.004060765
+# r3  0.15  0.1528222 -0.002822168
+# r4  0.30  0.2885284  0.011471596
+# r5  0.20  0.1940074 -0.088528404
+# mu 10.00  9.9783616  0.021638365
+# sd  4.00  3.9757658  0.024234206

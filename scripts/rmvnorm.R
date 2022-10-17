@@ -12,15 +12,14 @@
 rmvnorm <- function(n, mu, Sigma) {
   
   p <- length(mu)
-  
-  if (dim(mu) == c(p, 1) && dim(Sigma) == c(p, p)) {
+
+  if (length(mu) != ncol(Sigma) | ncol(Sigma) != nrow(Sigma)){
+    stop("Input dimensions should match!")
     
+  }else{
     Z <- matrix(rnorm(p * n, 0, 1), ncol = p)
     X <-  matrix(1, n) %*% t(mu) + Z %*% chol(Sigma)
     return(X)
-    
-  }else{
-    stop("Input dimensions should match!")
   }
 }
 
