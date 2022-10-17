@@ -258,20 +258,27 @@ ans_3c <- ols_reg(Y_c, cbind(1, X))
 # SD(e)  4.0163259          NA        NA       NA
 # R2     0.3524265          NA        NA       NA
 
-dif_3c <- rbind(r1 = cbind(p_c$r[1], cor(Y_c, X[, 1]), p_c$r[1] - cor(Y_c, X[, 1])),
+dif_3c <- rbind(b0 = cbind(b0_c, ans_3c[1], b0_c - ans_3c[1]), 
+                b1 = cbind(B_c[1], ans_3c[2], B_c[1] - ans_3c[2]),
+                b1 = cbind(B_c[2], ans_3c[3], B_c[2] - ans_3c[3]),
+                r1 = cbind(p_c$r[1], cor(Y_c, X[, 1]), p_c$r[1] - cor(Y_c, X[, 1])),
                 r2 = cbind(p_c$r[2], cor(Y_c, X[, 2]), p_c$r[2] - cor(Y_c, X[, 2])),
+                R2 = cbind(R2, ans_3c[5], R2 - ans_3c[5]),
                 mu = cbind(p_c$mu, mean(Y_c), p_c$mu - mean(Y_c)),
                 sd = cbind(p_c$sd, sd(Y_c), p_c$sd - sd(Y_c)))
 
 colnames(dif_3c) <- c("Pop", "Est", "Dif")
-rownames(dif_3c) <- c("r1", "r2", "mu", "sd")
+rownames(dif_3c) <- c("b0", "b1", "b2", "r1", "r2", "R2", "mu", "sd")
 
-
-#     Pop        Est          Dif
-# r1  0.3  0.2951460  0.004853952
-# r2 -0.4 -0.3988313 -0.001168671
-# mu 10.0 10.0270952 -0.027095160
-# sd  5.0  4.9954457  0.004554319
+#           Pop        Est          Dif
+# b0 11.9230769 11.7786196  0.144457282
+# b1  2.3076923  2.3182149 -0.010522596
+# b2 -1.3461538 -1.3368715 -0.009282314
+# r1  0.3000000  0.3017790 -0.001778966
+# r2 -0.4000000 -0.3966807 -0.003319256
+# R2  0.3538462  0.3524265  0.001419650
+# mu 10.0000000 10.0002254 -0.000225353
+# sd  5.0000000  4.9909314  0.009068572
 
 
 
