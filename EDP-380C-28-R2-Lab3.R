@@ -260,26 +260,20 @@ ans_3c <- ols_reg(Y_c, cbind(1, X))
 
 dif_3c <- rbind(b0 = cbind(b0_c, ans_3c[1], b0_c - ans_3c[1]), 
                 b1 = cbind(B_c[1], ans_3c[2], B_c[1] - ans_3c[2]),
-                b1 = cbind(B_c[2], ans_3c[3], B_c[2] - ans_3c[3]),
-                r1 = cbind(p_c$r[1], cor(Y_c, X[, 1]), p_c$r[1] - cor(Y_c, X[, 1])),
-                r2 = cbind(p_c$r[2], cor(Y_c, X[, 2]), p_c$r[2] - cor(Y_c, X[, 2])),
-                R2 = cbind(R2, ans_3c[5], R2 - ans_3c[5]),
-                mu = cbind(p_c$mu, mean(Y_c), p_c$mu - mean(Y_c)),
-                sd = cbind(p_c$sd, sd(Y_c), p_c$sd - sd(Y_c)))
+                b2 = cbind(B_c[2], ans_3c[3], B_c[2] - ans_3c[3]),
+                sde = cbind(s_exp_c, ans_3c[4], s_exp_c - ans_3c[4]),
+                R2 = cbind(R2, ans_3c[5], R2 - ans_3c[5])
+)
 
 colnames(dif_3c) <- c("Pop", "Est", "Dif")
-rownames(dif_3c) <- c("b0", "b1", "b2", "r1", "r2", "R2", "mu", "sd")
+rownames(dif_3c) <- c("b0", "b1", "b2", "SD(e)", "R2")
 
-#           Pop        Est          Dif
-# b0 11.9230769 11.7786196  0.144457282
-# b1  2.3076923  2.3182149 -0.010522596
-# b2 -1.3461538 -1.3368715 -0.009282314
-# r1  0.3000000  0.3017790 -0.001778966
-# r2 -0.4000000 -0.3966807 -0.003319256
-# R2  0.3538462  0.3524265  0.001419650
-# mu 10.0000000 10.0002254 -0.000225353
-# sd  5.0000000  4.9909314  0.009068572
-
+#             Pop        Est          Dif
+# b0    11.9230769 11.7786196  0.144457282
+# b1     2.3076923  2.3182149 -0.010522596
+# b2    -1.3461538 -1.3368715 -0.009282314
+# SD(e)  4.0191848  4.0163259  0.002858840
+# R2     0.3538462  0.3524265  0.001419650
 
 
 # 3.d
@@ -316,6 +310,14 @@ p_x <- list(mu = rep(0, 5),
             rho = 0.15)
 p_y <- list(b = rep(1, 5), mu = 25, R2 = 0.5)
 
+## get pop SD(e)
+p <- length(p_x$mu)
+p_xt <- trans_p(p_x)
+X <- with(p_xt, rmvnorm(n, mu, Sigma))
+B <- with(p_y, matrix(b, nrow = p))
+V_exp <- with(p_y, (t(B) %*% p_xt$Sigma %*% B) * ((1/R2) - 1))
+s_exp <- sqrt(V_exp)
+
 ## gen data using method 1 
 data_m1 <- gen_m1(100000, p_x, p_y)
 
@@ -337,23 +339,23 @@ dif_3d1 <- rbind(
   b3 = cbind(p_y$b[3], ans_3d1[4, 1], p_y$b[3] - ans_3d1[4, 1]),
   b4 = cbind(p_y$b[4], ans_3d1[5, 1], p_y$b[4] - ans_3d1[5, 1]),
   b5 = cbind(p_y$b[5], ans_3d1[6, 1], p_y$b[5] - ans_3d1[6, 1]),
+  sde = cbind(s_exp, ans_3d1[7, 1], s_exp - ans_3d1[7, 1]),
   R2 = cbind(p_y$R2, ans_3d1[8, 1], p_y$R2 - ans_3d1[8, 1]),
   mu = cbind(p_y$mu, mean(data_m1[,1]), p_y$mu - mean(data_m1[,1]))
 )
 
-
 colnames(dif_3d1) <- c("Pop", "Est", "Dif")
-rownames(dif_3d1) <- c("b1", "b2", "b3", "b4", "b5", "R2", "mu")
-
-#     Pop        Est          Dif
-# b1  1.0  0.9812441  0.018755865
-# b2  1.0  1.0199428 -0.019942757
-# b3  1.0  0.9881404  0.011859598
-# b4  1.0  0.9852023  0.014797719
-# b5  1.0  1.0050628 -0.005062766
-# R2  0.5  0.4986015  0.001398544
-# mu 25.0 25.0334928 -0.033492815
-
+rownames(dif_3d1) <- c("b1", "b2", "b3", "b4", "b5", "SD(e)", "R2", "mu")
+ 
+#             Pop        Est          Dif
+# b1     1.000000  0.9812441  0.018755865
+# b2     1.000000  1.0199428 -0.019942757
+# b3     1.000000  0.9881404  0.011859598
+# b4     1.000000  0.9852023  0.014797719
+# b5     1.000000  1.0050628 -0.005062766
+# SD(e)  4.825922  4.8184817  0.007440416
+# R2     0.500000  0.4986015  0.001398544
+# mu    25.000000 25.0334928 -0.033492815
 
 ## Method 2 
 gen_m2 <- function(n, p_x, p_y){
@@ -386,7 +388,9 @@ gen_m2 <- function(n, p_x, p_y){
 
   output <- cbind(Y,X)
   attr(output, 'par_xy') <- list(p_x, p_y)
-  return(output) 
+  return(list(data = output,
+              b0 = b0, B = B, s_exp = s_exp, R2 = R2)
+  )
 
 }
 
@@ -400,7 +404,8 @@ p_x <- list(mu = rep(0, 5),
 p_y <- list(rho = c(-0.15, -0.5, 0.15, 0.3, 0.20), mu = 10, sd = 4)
 
 ## gen data using method 2 
-data_m2 <- gen_m2(10000, p_x, p_y)
+m2 <- gen_m2(10000, p_x, p_y)
+data_m2 <- m2[[1]]
 ans_3d2 <- ols_reg(data_m2[,1], cbind(1, data_m2[,2:6]))
 
 #         Estimate         SE   t value      Pr(>|t|)
@@ -409,28 +414,32 @@ ans_3d2 <- ols_reg(data_m2[,1], cbind(1, data_m2[,2:6]))
 # b2    -1.6813177 0.02055348 -81.80209  0.000000e+00
 # b3     0.3964946 0.01673604  23.69107 9.126511e-121
 # b4     0.7044516 0.01438804  48.96093  0.000000e+00
-# b5     0.4194456 0.01284228  32.66131 2.057206e-222
+# b5     0.4194456 0.01284228  32.66131 2.057206e-222(
 # SD(e)  2.8030957         NA        NA            NA
 # R2     0.5030344         NA        NA            NA
 
-dif_3d2 <- rbind(r1 = cbind(p_y$rho[1], cor(data_m2[, 1], data_m2[, 2]), p_y$rho[1] - cor(data_m2[,1], data_m2[, 2])),
-                 r2 = cbind(p_y$rho[2], cor(data_m2[, 1], data_m2[, 3]), p_y$rho[2] - cor(data_m2[,1], data_m2[, 3])),
-                 r3 = cbind(p_y$rho[3], cor(data_m2[, 1], data_m2[, 4]), p_y$rho[3] - cor(data_m2[,1], data_m2[, 4])),
-                 r4 = cbind(p_y$rho[4], cor(data_m2[, 1], data_m2[, 5]), p_y$rho[4] - cor(data_m2[,1], data_m2[, 5])),
-                 r5 = cbind(p_y$rho[5], cor(data_m2[, 1], data_m2[, 6]), p_y$rho[5] - cor(data_m2[,1], data_m2[, 5])),
-                 mu = cbind(p_y$mu, mean(data_m2[, 1]), p_y$mu - mean(data_m2[, 1])),
-                 sd = cbind(p_y$sd, sd(data_m2[, 1]), p_y$sd - sd(data_m2[, 1]))
+
+dif_3d2 <- rbind(b0 = cbind(m2$b0, ans_3d2[1], m2$b0 - ans_3d2[1]),
+                 b1 = cbind(m2$B[1], ans_3d2[2], m2$B[1] - ans_3d2[2]),
+                 b2 = cbind(m2$B[2], ans_3d2[3], m2$B[2] - ans_3d2[3]),
+                 b3 = cbind(m2$B[3], ans_3d2[4], m2$B[3] - ans_3d2[4]),
+                 b4 = cbind(m2$B[4], ans_3d2[5], m2$B[4] - ans_3d2[5]),
+                 b5 = cbind(m2$B[5], ans_3d2[6], m2$B[5] - ans_3d2[6]),
+                 sde = cbind(m2$s_exp, ans_3d2[7], m2$s_exp - ans_3d2[7]),
+                 R2 = cbind(m2$R2, ans_3d2[8], m2$R2 - ans_3d2[8])
 )
 
 
 colnames(dif_3d2) <- c("Pop", "Est", "Dif")
-rownames(dif_3d2) <- c("r1", "r2", "r3", "r4", "r5", "mu", "sd")
+rownames(dif_3d2) <- c("b0", "b1", "b2", "b3", "b4", "b5", "SD(e)", "R2")
 
-#     Pop        Est          Dif
-# r1 -0.15 -0.1595000  0.009500006
-# r2 -0.50 -0.5040608  0.004060765
-# r3  0.15  0.1528222 -0.002822168
-# r4  0.30  0.2885284  0.011471596
-# r5  0.20  0.1940074 -0.088528404
-# mu 10.00  9.9783616  0.021638365
-# sd  4.00  3.9757658  0.024234206
+
+#             Pop        Est          Dif
+# b0    10.0000000  9.9958695  0.004130497
+# b1    -0.7058824 -0.7106237  0.004741309
+# b2    -1.6637807 -1.6813177  0.017536996
+# b3     0.4075414  0.3964946  0.011046756
+# b4     0.7058824  0.7044516  0.001430782
+# b5     0.4209069  0.4194456  0.001461357
+# SD(e)  2.8284271  2.8030957  0.025331412
+# R2     0.5000000  0.5030344 -0.003034398
